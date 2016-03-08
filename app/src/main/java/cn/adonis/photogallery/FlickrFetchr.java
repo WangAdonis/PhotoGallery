@@ -18,10 +18,10 @@ public class FlickrFetchr {
             InputStream in = connection.getInputStream();
             if (connection.getResponseCode()!=HttpURLConnection.HTTP_OK)
                 return null;
-            int byteRead=0;
+            int bytesRead=0;
             byte[] buffer=new byte[1024];
-            while ((byteRead=in.read(buffer))>0){
-                out.write(buffer,0,byteRead);
+            while ((bytesRead=in.read(buffer))>0){
+                out.write(buffer,0,bytesRead);
             }
             out.close();
             return out.toByteArray();

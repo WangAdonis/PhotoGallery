@@ -8,6 +8,9 @@ import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -43,6 +46,7 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         new FetchItemsTask().execute();
+        setHasOptionsMenu(true);
 
         mThumbnailDownloader=new ThumbnailDownloader<ImageView>(new Handler());
         mThumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>(){
@@ -107,7 +111,7 @@ public class PhotoGalleryFragment extends Fragment {
                 convertView=getActivity().getLayoutInflater().inflate(R.layout.gallery_item,parent,false);
             }
             ImageView imageView=(ImageView)convertView.findViewById(R.id.gallery_item_imageView);
-            imageView.setImageResource(R.mipmap.brian_up_close);
+            imageView.setImageResource(R.mipmap.loading_photo);
             GalleryItem item=getItem(position);
             mThumbnailDownloader.queueThumbnail(imageView,item.getUrl());
             return convertView;
@@ -124,5 +128,24 @@ public class PhotoGalleryFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         mThumbnailDownloader.clearQueue();
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery,menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.menu_item_search:
+                getActivity().onSearchRequested();
+                return true;
+            case R.id.menu_item_clear:
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 }

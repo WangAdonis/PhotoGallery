@@ -96,7 +96,7 @@ public class FlickrFetchr {
         return items;
     }
 
-    public void parseItems(ArrayList<GalleryItem> items,XmlPullParser parser)
+    private void parseItems(ArrayList<GalleryItem> items,XmlPullParser parser)
             throws XmlPullParserException,IOException{
         int eventType=parser.next();
         while (eventType!=XmlPullParser.END_DOCUMENT){

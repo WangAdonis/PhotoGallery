@@ -71,21 +71,12 @@ public class PhotoGalleryFragment extends Fragment {
     private class FetchItemsTask extends AsyncTask<Void,Void,ArrayList<GalleryItem>>{
         @Override
         protected ArrayList<GalleryItem> doInBackground(Void... params) {
-//            try{
-//                String result = new FlickrFetchr().getUrl("http://www.google.com");
-//                if(result==null)
-//                    result="";
-//                Log.e("google",result);
-//            }catch (IOException e){
-//                e.printStackTrace();
-//                Log.e("fail","failed to fetch");
-//            }
             return new FlickrFetchr().fetchItems();
-//            return null;
         }
 
         @Override
-        protected void onPostExecute(ArrayList<GalleryItem> items) {
+        protected void onPostExecute(ArrayList<GalleryItem> items) {  //入口参数为doInBackground的返回值，
+        // 也是AsuncTask的第三个参数，onPostExecute方法会在AsyncTask任务结束时被调用
             mItems=items;
             setupAdapter();
         }

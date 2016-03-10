@@ -40,16 +40,17 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
         mResponseHandler=responseHandler;
     }
 
-    public void queueThumbnail(Token token,String url){
-        Log.i(TAG, "Got an URL: " + url);
-        requestMap.put(token,url);
-        mHandler.obtainMessage(MESSAGE_DOWNLOAD,token).sendToTarget();
-    }
-
     @SuppressLint("HandlerLeak")
     @Override
-    protected void onLooperPrepared() {
-        mHandler = new Handler(){
+    protected void onLooperPrepared() { //一个Thread只能有一个Looper对象
+
+        mHandler = new Handler(){  //handler创建时会关联一个looper，默认的构造方法将关联当前线程的looper
+            /*
+            消息的处理是通过核心方法dispatchMessage(Message msg)与钩子方法handleMessage(Message msg)完成的。
+            dispatchMessage(Message msg)方法由looper调用：如果message设置了callback，即runnable消息，
+            处理callback，直接运行runnable.run()方法；如果handler本身设置了callback，则执行callback；
+            否则运行handleMessage(Message msg)方法。
+             */
             @Override
             public void handleMessage(Message msg) {
                 if(msg.what==MESSAGE_DOWNLOAD){
@@ -61,6 +62,14 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
         };
     }
 
+    public void queueThumbnail(Token token,String url){
+        Log.i(TAG, "Got an URL: " + url);
+        requestMap.put(token,url);
+        mHandler.obtainMessage(MESSAGE_DOWNLOAD,token).sendToTarget();  //mHandler发送消息至Looper的MessageQueue队列
+        //当该消息出队时，Looper将调用发送该消息的Handler的dispatchMessage(Message msg)方法
+    }
+
+
     private void handleRequest(final Token token){
         try{
             final String url=requestMap.get(token);
@@ -69,8 +78,7 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
             }
             byte[] bitmapBytes=new FlickrFetchr().getUrlBytes(url);
             final Bitmap bitmap= BitmapFactory.decodeByteArray(bitmapBytes,0,bitmapBytes.length);
-
-            mResponseHandler.post(new Runnable() {
+            mResponseHandler.post(new Runnable() {  //handler发送Message到关联的Looper中的MessageQueue中，这个Message只能由发送它的handler自己处理
                 @Override
                 public void run() {
                     if(requestMap.get(token)!=url){

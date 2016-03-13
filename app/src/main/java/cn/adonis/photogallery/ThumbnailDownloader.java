@@ -7,6 +7,7 @@ import android.location.GpsStatus;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.support.v4.util.LruCache;
 import android.util.Log;
 import java.io.IOException;
 import java.util.Collections;
@@ -27,6 +28,8 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
     private Handler mResponseHandler;
     private Listener<Token> mListener;
 
+    private LruCache<Token,Bitmap> mBitmapLruCache;
+
     public interface Listener<Token>{
         void onThumbnailDownloaded(Token token,Bitmap thumbnail);
     }
@@ -37,6 +40,8 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
 
     public ThumbnailDownloader(Handler responseHandler){
         super(TAG);
+        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        mBitmapLruCache=new LruCache<Token,Bitmap>(maxMemory/8);
         mResponseHandler=responseHandler;
     }
 
@@ -76,18 +81,33 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
             if(url==null){
                 return;
             }
-            byte[] bitmapBytes=new FlickrFetchr().getUrlBytes(url);
-            final Bitmap bitmap= BitmapFactory.decodeByteArray(bitmapBytes,0,bitmapBytes.length);
-            mResponseHandler.post(new Runnable() {  //handler发送Message到关联的Looper中的MessageQueue中，这个Message只能由发送它的handler自己处理
-                @Override
-                public void run() {
-                    if(requestMap.get(token)!=url){
-                        return;
+            if(mBitmapLruCache.get(token)==null) {
+                byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
+                final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                mBitmapLruCache.put(token,bitmap);
+                mResponseHandler.post(new Runnable() {  //handler发送Message到关联的Looper中的MessageQueue中，这个Message只能由发送它的handler自己处理
+                    @Override
+                    public void run() {
+                        if (requestMap.get(token) != url) {
+                            return;
+                        }
+                        requestMap.remove(token);
+                        mListener.onThumbnailDownloaded(token, bitmap);
                     }
-                    requestMap.remove(token);
-                    mListener.onThumbnailDownloaded(token,bitmap);
-                }
-            });
+                });
+            }else {
+                final Bitmap bitmap=mBitmapLruCache.get(token);
+                mResponseHandler.post(new Runnable() {  //handler发送Message到关联的Looper中的MessageQueue中，这个Message只能由发送它的handler自己处理
+                    @Override
+                    public void run() {
+                        if (requestMap.get(token) != url) {
+                            return;
+                        }
+                        requestMap.remove(token);
+                        mListener.onThumbnailDownloaded(token, bitmap);
+                    }
+                });
+            }
         }catch (IOException ioe){
             ioe.printStackTrace();
         }

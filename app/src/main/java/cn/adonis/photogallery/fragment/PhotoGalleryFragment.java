@@ -1,30 +1,19 @@
 package cn.adonis.photogallery.fragment;
 
-
-import android.app.Activity;
-import android.app.SearchManager;
-import android.app.SearchableInfo;
-import android.content.ComponentName;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
-
-import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.GridLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
 import java.util.ArrayList;
@@ -32,6 +21,7 @@ import cn.adonis.photogallery.FlickrFetchr;
 import cn.adonis.photogallery.GalleryItem;
 import cn.adonis.photogallery.R;
 import cn.adonis.photogallery.ThumbnailDownloader;
+import cn.adonis.photogallery.service.PollService;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -51,9 +41,12 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-//        new FetchItemsTask().execute();
         updateItems();
         setHasOptionsMenu(true);
+
+//        Intent i=new Intent(getActivity(), PollService.class);
+//        getActivity().startService(i);
+//        PollService.setServiceAlarm(getActivity(),true);
 
         mThumbnailDownloader=new ThumbnailDownloader<ImageView>(new Handler());
         mThumbnailDownloader.setListener(new ThumbnailDownloader.Listener<ImageView>(){
@@ -82,11 +75,7 @@ public class PhotoGalleryFragment extends Fragment {
     private class FetchItemsTask extends AsyncTask<Void,Void,ArrayList<GalleryItem>>{
         @Override
         protected ArrayList<GalleryItem> doInBackground(Void... params) {
-//            String query="android";
-            Activity activity=getActivity();
-            if(activity==null)
-                return new ArrayList<GalleryItem>();
-            String query= PreferenceManager.getDefaultSharedPreferences(activity).getString(FlickrFetchr.PREF_SEARCH_QUERY,null);
+            String query="android";
             if(query !=null){
                 return new FlickrFetchr().search(query);
             } else{
@@ -122,7 +111,7 @@ public class PhotoGalleryFragment extends Fragment {
                 convertView=getActivity().getLayoutInflater().inflate(R.layout.gallery_item,parent,false);
             }
             ImageView imageView=(ImageView)convertView.findViewById(R.id.gallery_item_imageView);
-            imageView.setImageResource(R.mipmap.loading_photo);
+            imageView.setImageResource(R.mipmap.brian_up_close);
             GalleryItem item=getItem(position);
             mThumbnailDownloader.queueThumbnail(imageView,item.getUrl());
             return convertView;
@@ -145,29 +134,6 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
-        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.HONEYCOMB){
-            MenuItem searchItem=menu.findItem(R.id.menu_item_search);
-//            searchItem.collapseActionView();
-
-//            if(searchItem==null){
-//                Log.e(TAG,"searchItem is null");
-//            }
-            SearchView searchView=(SearchView)searchItem.getActionView();
-//            SearchView searchView=(SearchView)MenuItemCompat.getActionView(searchItem);
-            if(searchView==null){
-                Log.e(TAG,"searchView is null");
-            }
-//            searchView.setIconifiedByDefault(false);
-
-            SearchManager searchManager=(SearchManager)getActivity().getSystemService(Context.SEARCH_SERVICE);
-            ComponentName name=getActivity().getComponentName();
-            SearchableInfo searchInfo=searchManager.getSearchableInfo(name);
-            if(searchInfo==null)
-                Log.e(TAG,"searchInfo is null");
-            else
-                searchView.setSearchableInfo(searchInfo);
-
-        }
     }
 
     @Override
@@ -177,17 +143,30 @@ public class PhotoGalleryFragment extends Fragment {
                 getActivity().onSearchRequested();
                 return true;
             case R.id.menu_item_clear:
-                PreferenceManager.getDefaultSharedPreferences(getActivity()).edit().putString(FlickrFetchr.PREF_SEARCH_QUERY,null).commit();
-                updateItems();
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm=!PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(),shouldStartAlarm);
+                if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.HONEYCOMB)
+                    getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
+    @Override
+    public void onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        MenuItem toggleItem=menu.findItem(R.id.menu_item_toggle_polling);
+        if(PollService.isServiceAlarmOn(getActivity())){
+            toggleItem.setTitle(R.string.stop_polling);
+        }else {
+            toggleItem.setTitle(R.string.start_polling);
+        }
+    }
+
     public void updateItems(){
         new FetchItemsTask().execute();
     }
-
-
 }
